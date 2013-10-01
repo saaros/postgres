@@ -126,6 +126,13 @@
      </varlistentry>
 
      <varlistentry>
+      <term><option>--clone</option></term>
+      <listitem><para>use copy-on-write clones instead of copying or hard linking files to
+      the new cluster; this option can only be used when the old and new clusters reside
+      on the same btrfs filesystem</para></listitem>
+     </varlistentry>
+
+     <varlistentry>
       <term><option>-o</option> <replaceable class="parameter">options</replaceable></term>
       <term><option>--old-options</option> <replaceable class="parameter">options</replaceable></term>
       <listitem><para>options to be passed directly to the

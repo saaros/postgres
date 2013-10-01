@@ -32,7 +32,10 @@ transfer_all_new_tablespaces(DbInfoArr *old_db_arr, DbInfoArr *new_db_arr,
 							 char *old_pgdata, char *new_pgdata)
 {
 	pg_log(PG_REPORT, "%s user relation files\n",
-	  user_opts.transfer_mode == TRANSFER_MODE_LINK ? "Linking" : "Copying");
+		user_opts.transfer_mode == TRANSFER_MODE_COPY ? "Copying" :
+		user_opts.transfer_mode == TRANSFER_MODE_LINK ? "Linking" :
+		user_opts.transfer_mode == TRANSFER_MODE_CLONE ? "Cloning" :
+		"FAIL");
 
 	/*
 	 * Transfering files by tablespace is tricky because a single database can
@@ -270,26 +273,14 @@ transfer_relfile(pageCnvCtx *pageConverter, FileNameMap *map,
 		/* Copying files might take some time, so give feedback. */
 		pg_log(PG_STATUS, "%s", old_file);
 
-		if ((user_opts.transfer_mode == TRANSFER_MODE_LINK) && (pageConverter != NULL))
-			pg_log(PG_FATAL, "This upgrade requires page-by-page conversion, "
-				   "you must use copy mode instead of link mode.\n");
-
-		if (user_opts.transfer_mode == TRANSFER_MODE_COPY)
+		msg = upgradeFile(user_opts.transfer_mode, old_file, new_file, pageConverter);
+		if (msg != NULL)
 		{
-			pg_log(PG_VERBOSE, "copying \"%s\" to \"%s\"\n", old_file, new_file);
-
-			if ((msg = copyAndUpdateFile(pageConverter, old_file, new_file, true)) != NULL)
-				pg_log(PG_FATAL, "error while copying relation \"%s.%s\" (\"%s\" to \"%s\"): %s\n",
-					   map->nspname, map->relname, old_file, new_file, msg);
-		}
-		else
-		{
-			pg_log(PG_VERBOSE, "linking \"%s\" to \"%s\"\n", old_file, new_file);
-
-			if ((msg = linkAndUpdateFile(pageConverter, old_file, new_file)) != NULL)
-				pg_log(PG_FATAL,
-					   "error while creating link for relation \"%s.%s\" (\"%s\" to \"%s\"): %s\n",
-					   map->nspname, map->relname, old_file, new_file, msg);
+			pg_log(PG_FATAL, "error while %s relation \"%s.%s\" (\"%s\" to \"%s\"): %s\n",
+				(user_opts.transfer_mode == TRANSFER_MODE_COPY ? "copying" :
+				 user_opts.transfer_mode == TRANSFER_MODE_LINK ? "linking" :
+				 user_opts.transfer_mode == TRANSFER_MODE_CLONE ? "cloning" :
+				 "FAIL"), map->nspname, map->relname, old_file, new_file, msg);
 		}
 	}
 

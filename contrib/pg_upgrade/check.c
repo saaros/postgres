@@ -151,6 +151,9 @@ check_new_cluster(void)
 	if (user_opts.transfer_mode == TRANSFER_MODE_LINK)
 		check_hard_link();
 
+	if (user_opts.transfer_mode == TRANSFER_MODE_CLONE)
+		check_clone_file();
+
 	check_is_super_user(&new_cluster);
 
 	/*

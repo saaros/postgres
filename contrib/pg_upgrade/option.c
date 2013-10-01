@@ -54,6 +54,7 @@ parseCommandLine(int argc, char *argv[])
 		{"retain", no_argument, NULL, 'r'},
 		{"jobs", required_argument, NULL, 'j'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"clone", no_argument, NULL, 1},
 		{NULL, 0, NULL, 0}
 	};
 	int			option;			/* Command line option */
@@ -186,6 +187,10 @@ parseCommandLine(int argc, char *argv[])
 				log_opts.verbose = true;
 				break;
 
+			case 1:
+				user_opts.transfer_mode = TRANSFER_MODE_CLONE;
+				break;
+
 			default:
 				pg_log(PG_FATAL,
 					   "Try \"%s --help\" for more information.\n",
@@ -236,6 +241,8 @@ Options:\n\
   -D, --new-datadir=DATADIR     new cluster data directory\n\
   -j, --jobs                    number of simultaneous processes or threads to use\n\
   -k, --link                    link instead of copying files to new cluster\n\
+      --clone                   use copy-on-write cloning instead of copying\n\
+                                files to new cluster (only supported on btrfs)\n\
   -o, --old-options=OPTIONS     old cluster options to pass to the server\n\
   -O, --new-options=OPTIONS     new cluster options to pass to the server\n\
   -p, --old-port=PORT           old cluster port number (default %d)\n\

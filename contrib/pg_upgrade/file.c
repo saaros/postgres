@@ -8,11 +8,16 @@
  */
 
 #include "postgres_fe.h"
+#include "pg_config.h"
 
 #include "pg_upgrade.h"
 
 #include <fcntl.h>
 
+#ifdef HAVE_LINUX_BTRFS_H
+# include <sys/ioctl.h>
+# include <linux/btrfs.h>
+#endif
 
 
 #ifndef WIN32
@@ -23,21 +28,42 @@ static int	win32_pghardlink(const char *src, const char *dst);
 
 
 /*
- * copyAndUpdateFile()
+ * upgradeFile()
  *
- *	Copies a relation file from src to dst.  If pageConverter is non-NULL, this function
- *	uses that pageConverter to do a page-by-page conversion.
+ * Transfer a relation file from src to dst using one of the supported
+ * methods.  If the on-disk format of the new cluster is bit-for-bit
+ * compatible with the on-disk format of the old cluster we can simply link
+ * each relation to perform a true in-place upgrade.  Otherwise we must copy
+ * (either block-by-block or using a copy-on-write clone) the data from old
+ * cluster to new cluster and then perform the conversion.
  */
 const char *
-copyAndUpdateFile(pageCnvCtx *pageConverter,
-				  const char *src, const char *dst, bool force)
+upgradeFile(transferMode transfer_mode, const char *src,
+		const char *dst, pageCnvCtx *pageConverter)
 {
 	if (pageConverter == NULL)
 	{
-		if (pg_copy_file(src, dst, force) == -1)
-			return getErrorText(errno);
-		else
-			return NULL;
+		int rc = -1;
+
+		switch (transfer_mode)
+		{
+			case TRANSFER_MODE_COPY:
+				rc = pg_copy_file(src, dst, true);
+				break;
+			case TRANSFER_MODE_CLONE:
+				rc = upg_clone_file(src, dst);
+				break;
+			case TRANSFER_MODE_LINK:
+				rc = pg_link_file(src, dst);
+				break;
+		}
+
+		return (rc < 0) ? getErrorText(errno) : NULL;
+	}
+	else if (transfer_mode != TRANSFER_MODE_COPY)
+	{
+		return "Cannot in-place update this cluster, "
+			"page-by-page (copy-mode) conversion is required";
 	}
 	else
 	{
@@ -97,29 +123,6 @@ copyAndUpdateFile(pageCnvCtx *pageConverter,
 				return NULL;
 		}
 	}
-}
-
-
-/*
- * linkAndUpdateFile()
- *
- * Creates a hard link between the given relation files. We use
- * this function to perform a true in-place update. If the on-disk
- * format of the new cluster is bit-for-bit compatible with the on-disk
- * format of the old cluster, we can simply link each relation
- * instead of copying the data from the old cluster to the new cluster.
- */
-const char *
-linkAndUpdateFile(pageCnvCtx *pageConverter,
-				  const char *src, const char *dst)
-{
-	if (pageConverter != NULL)
-		return "Cannot in-place update this cluster, page-by-page conversion is required";
-
-	if (pg_link_file(src, dst) == -1)
-		return getErrorText(errno);
-	else
-		return NULL;
 }
 
 
@@ -227,6 +230,64 @@ win32_pghardlink(const char *src, const char *dst)
 }
 #endif
 
+
+int
+upg_clone_file(const char *existing_file, const char *new_file)
+{
+#ifdef BTRFS_IOC_CLONE
+	int rc, res_errno = 0, src_fd = -1, dest_fd = -1;
+
+	src_fd = open(existing_file, O_RDONLY);
+	if (src_fd < 0)
+		return -1;
+
+	dest_fd = open(new_file, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+	if (dest_fd < 0)
+	{
+		close(src_fd);
+		return -1;
+	}
+
+	rc = ioctl(dest_fd, BTRFS_IOC_CLONE, src_fd);
+	if (rc < 0)
+	{
+		pg_log(PG_REPORT, "btrfs clone: %s\n", strerror(errno));
+		res_errno = errno;  /* save errno for caller */
+		unlink(new_file);
+	}
+
+	close(dest_fd);
+	close(src_fd);
+
+	errno = res_errno;  /* restore errno after close() calls */
+	return rc;
+#else
+	/* TODO: add support for zfs clones */
+	pg_log(PG_REPORT, "system does not support file cloning\n");
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+
+void
+check_clone_file(void)
+{
+	char		existing_file[MAXPGPATH];
+	char		cloned_file[MAXPGPATH];
+
+	snprintf(existing_file, sizeof(existing_file), "%s/PG_VERSION", old_cluster.pgdata);
+	snprintf(cloned_file, sizeof(cloned_file), "%s/PG_VERSION.linktest", new_cluster.pgdata);
+	unlink(cloned_file);		/* might fail */
+
+	if (upg_clone_file(existing_file, cloned_file) == -1)
+	{
+		pg_log(PG_FATAL,
+			   "Could not clone a file between old and new data directories: %s\n"
+			   "File cloning is currently only supported on btrfs.\n",
+			   getErrorText(errno));
+	}
+	unlink(cloned_file);
+}
 
 /* fopen() file with no group/other permissions */
 FILE *

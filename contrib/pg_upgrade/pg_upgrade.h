@@ -209,12 +209,13 @@ typedef struct
 } ControlData;
 
 /*
- * Enumeration to denote link modes
+ * Enumeration to denote transfer mode
  */
 typedef enum
 {
 	TRANSFER_MODE_COPY,
-	TRANSFER_MODE_LINK
+	TRANSFER_MODE_LINK,
+	TRANSFER_MODE_CLONE
 } transferMode;
 
 /*
@@ -381,12 +382,12 @@ const pageCnvCtx *setupPageConverter(void);
 typedef void *pageCnvCtx;
 #endif
 
-const char *copyAndUpdateFile(pageCnvCtx *pageConverter, const char *src,
-				  const char *dst, bool force);
-const char *linkAndUpdateFile(pageCnvCtx *pageConverter, const char *src,
-				  const char *dst);
+const char *upgradeFile(transferMode transfer_mode, const char *src,
+				const char *dst, pageCnvCtx *pageConverter);
 
 void		check_hard_link(void);
+void		check_clone_file(void);
+int		upg_clone_file(const char *old_file, const char *new_file);
 FILE	   *fopen_priv(const char *path, const char *mode);
 
 /* function.c */
