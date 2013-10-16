@@ -1472,6 +1472,18 @@ select hstore_to_json_loose('"a key" =>1, b => t, c => null, d=> 12345, e => 012
  {"b": true, "c": null, "d": 12345, "e": "012345", "f": 1.234, "g": 2.345e+4, "a key": 1}
 (1 row)
 
+select hstore_to_json('');
+ hstore_to_json 
+----------------
+ {}
+(1 row)
+
+select hstore_to_json_loose('');
+ hstore_to_json_loose 
+----------------------
+ {}
+(1 row)
+
 create table test_json_agg (f1 text, f2 hstore);
 insert into test_json_agg values ('rec1','"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4'),
        ('rec2','"a key" =>2, b => f, c => "null", d=> -12345, e => 012345.6, f=> -1.234, g=> 0.345e-4');

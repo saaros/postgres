@@ -1241,8 +1241,8 @@ hstore_to_json_loose(PG_FUNCTION_ARGS)
 
 	if (count == 0)
 	{
-		out = palloc(1);
-		*out = '\0';
+		out = palloc(3);
+		memcpy(out, "{}", 3);
 		PG_RETURN_TEXT_P(cstring_to_text(out));
 	}
 
@@ -1370,8 +1370,8 @@ hstore_to_json(PG_FUNCTION_ARGS)
 
 	if (count == 0)
 	{
-		out = palloc(1);
-		*out = '\0';
+		out = palloc(3);
+		memcpy(out, "{}", 3);
 		PG_RETURN_TEXT_P(cstring_to_text(out));
 	}
 
