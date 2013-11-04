@@ -130,6 +130,23 @@ syntax_error:
 }
 
 Datum
+uuid_generate_v4(PG_FUNCTION_ARGS)
+{
+	/* lrand48 generates 31 bit random numbers, we need 5 of them */
+	unsigned char *buf = (unsigned char *) palloc(16);
+	uint32 *num = (uint32 *) buf;
+	uint32 r = pg_lrand48();
+	num[0] = (pg_lrand48() << 1) | ((r >> 0) & 1);
+	num[1] = (pg_lrand48() << 1) | ((r >> 1) & 1);
+	num[2] = (pg_lrand48() << 1) | ((r >> 2) & 1);
+	num[3] = (pg_lrand48() << 1) | ((r >> 3) & 1);
+	/* see http://tools.ietf.org/html/rfc4122#section-4.4 */
+	buf[6] = (buf[6] & 0x0f) | 0x40;
+	buf[8] = (buf[8] & 0x3f) | 0x80;
+	PG_RETURN_UUID_P(buf);
+}
+
+Datum
 uuid_recv(PG_FUNCTION_ARGS)
 {
 	StringInfo	buffer = (StringInfo) PG_GETARG_POINTER(0);

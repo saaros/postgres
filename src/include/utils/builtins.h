@@ -1101,6 +1101,7 @@ extern Datum uuid_gt(PG_FUNCTION_ARGS);
 extern Datum uuid_ne(PG_FUNCTION_ARGS);
 extern Datum uuid_cmp(PG_FUNCTION_ARGS);
 extern Datum uuid_hash(PG_FUNCTION_ARGS);
+extern Datum uuid_generate_v4(PG_FUNCTION_ARGS);
 
 /* windowfuncs.c */
 extern Datum window_row_number(PG_FUNCTION_ARGS);
