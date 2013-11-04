@@ -29,7 +29,14 @@ AC_CONFIG_AUX_DIR(config)
 AC_PREFIX_DEFAULT(/usr/local/pgsql)
 AC_SUBST(configure_args, [$ac_configure_args])
 
-AC_DEFINE_UNQUOTED(PG_VERSION, "$PACKAGE_VERSION", [PostgreSQL version as a string])
+# Append git tag based version to PG_VERSION if we're building from a git
+# checkout, but don't touch PACKAGE_VERSION which is used to create other
+# version variables (major version and numeric version.)
+PG_VERSION="$PACKAGE_VERSION"
+if test -d .git; then
+  PG_VERSION="$PG_VERSION (`git describe --tags --long --dirty HEAD || echo unknown`)"
+fi
+AC_DEFINE_UNQUOTED(PG_VERSION, "$PG_VERSION", [PostgreSQL version as a string])
 [PG_MAJORVERSION=`expr "$PACKAGE_VERSION" : '\([0-9][0-9]*\.[0-9][0-9]*\)'`]
 AC_SUBST(PG_MAJORVERSION)
 AC_DEFINE_UNQUOTED(PG_MAJORVERSION, "$PG_MAJORVERSION", [PostgreSQL major version as a string])
