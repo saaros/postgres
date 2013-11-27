@@ -384,11 +384,13 @@ vacuum_set_xid_limits(int freeze_min_age,
 					  TransactionId *oldestXmin,
 					  TransactionId *freezeLimit,
 					  TransactionId *freezeTableLimit,
-					  MultiXactId *multiXactCutoff)
+					  MultiXactId *multiXactCutoff,
+					  MultiXactId *multiTableLimit)
 {
 	int			freezemin;
 	TransactionId limit;
 	TransactionId safeLimit;
+	MultiXactId	mxLimit;
 
 	/*
 	 * We can always ignore processes running lazy vacuum.	This is because we
@@ -441,9 +443,21 @@ vacuum_set_xid_limits(int freeze_min_age,
 
 	*freezeLimit = limit;
 
+	/*
+	 * simplistic multixactid freezing: use the same freezing policy as
+	 * for Xids.
+	 */
+	mxLimit = GetOldestMultiXactId() - freezemin;
+	if (mxLimit < FirstMultiXactId)
+		mxLimit = FirstMultiXactId;
+
+	*multiXactCutoff = mxLimit;
+
 	if (freezeTableLimit != NULL)
 	{
 		int			freezetable;
+
+		Assert(multiTableLimit != NULL);
 
 		/*
 		 * Determine the table freeze age to use: as specified by the caller,
@@ -459,29 +473,24 @@ vacuum_set_xid_limits(int freeze_min_age,
 		Assert(freezetable >= 0);
 
 		/*
-		 * Compute the cutoff XID, being careful not to generate a "permanent"
-		 * XID.
+		 * Compute XID limit causing a full-table vacuum, being careful not to
+		 * generate a "permanent" XID.
 		 */
 		limit = ReadNewTransactionId() - freezetable;
 		if (!TransactionIdIsNormal(limit))
 			limit = FirstNormalTransactionId;
 
 		*freezeTableLimit = limit;
-	}
-
-	if (multiXactCutoff != NULL)
-	{
-		MultiXactId mxLimit;
 
 		/*
-		 * simplistic multixactid freezing: use the same freezing policy as
-		 * for Xids
+		 * Compute mXID limit causing a full-table vacuum, being careful not
+		 * to generate an invalid mXID. We just copy the logic (and limits)
+		 * from plain XIDs here.
 		 */
-		mxLimit = GetOldestMultiXactId() - freezemin;
+		mxLimit = ReadNextMultiXactId() - freezetable;
 		if (mxLimit < FirstMultiXactId)
-			mxLimit = FirstMultiXactId;
-
-		*multiXactCutoff = mxLimit;
+			mxLimit = FirstNormalTransactionId;
+		*multiTableLimit = mxLimit;
 	}
 }
 

@@ -848,7 +848,8 @@ copy_heap_data(Oid OIDNewHeap, Oid OIDOldHeap, Oid OIDOldIndex,
 	 */
 	vacuum_set_xid_limits(freeze_min_age, freeze_table_age,
 						  OldHeap->rd_rel->relisshared,
-						  &OldestXmin, &FreezeXid, NULL, &MultiXactCutoff);
+						  &OldestXmin, &FreezeXid, NULL, &MultiXactCutoff,
+						  NULL);
 
 	/*
 	 * FreezeXid will become the table's new relfrozenxid, and that mustn't go
