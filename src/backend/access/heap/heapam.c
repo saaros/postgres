@@ -5264,6 +5264,7 @@ heap_freeze_tuple(HeapTupleHeader tuple, TransactionId cutoff_xid,
 				  MultiXactId cutoff_multi)
 {
 	bool		changed = false;
+	bool		freeze_xmax = false;
 	TransactionId xid;
 
 	xid = HeapTupleHeaderGetXmin(tuple);
@@ -5281,17 +5282,95 @@ heap_freeze_tuple(HeapTupleHeader tuple, TransactionId cutoff_xid,
 		changed = true;
 	}
 
+	xid = HeapTupleHeaderGetRawXmax(tuple);
+
 	/*
 	 * Note that this code handles IS_MULTI Xmax values, too, but only to mark
 	 * the tuple as not updated if the multixact is below the cutoff Multixact
 	 * given; it doesn't remove dead members of a very old multixact.
 	 */
-	xid = HeapTupleHeaderGetRawXmax(tuple);
-	if ((tuple->t_infomask & HEAP_XMAX_IS_MULTI) ?
-		(MultiXactIdIsValid(xid) &&
-		 MultiXactIdPrecedes(xid, cutoff_multi)) :
-		(TransactionIdIsNormal(xid) &&
-		 TransactionIdPrecedes(xid, cutoff_xid)))
+	if (tuple->t_infomask & HEAP_XMAX_INVALID)
+		;
+	else if(tuple->t_infomask & HEAP_XMAX_IS_MULTI)
+	{
+		/* FIXME: was accepted before, shouldn't happen, right? */
+		if (!MultiXactIdIsValid(xid))
+			freeze_xmax = true;
+		else if (MultiXactIdPrecedes(xid, cutoff_multi))
+		{
+			TransactionId update_xmax = HeapTupleGetUpdateXid(tuple);
+
+			if (HEAP_XMAX_IS_LOCKED_ONLY(tuple->t_infomask) ||
+				!TransactionIdIsValid(update_xmax))
+				freeze_xmax = true;
+			else
+			{
+				/*
+				 * Need to replace the multi with the update xid because the
+				 * multi is going to get removed. If we'd simply set
+				 * freeze_max to true here, we'd end up with both the old and
+				 * the new tuple version in case the updater committed.
+				 */
+				Assert(InRecovery || !TransactionIdIsInProgress(cutoff_multi));
+				tuple->t_infomask &= ~HEAP_XMAX_BITS;
+				if (TransactionIdIsValid(update_xmax))
+					HeapTupleHeaderSetXmax(tuple, update_xmax);
+				else
+					freeze_xmax = true;
+			}
+		}
+		else if (HEAP_XMAX_IS_LOCKED_ONLY(tuple->t_infomask))
+			;
+		else
+		{
+			MultiXactMember *members;
+			int			nmembers;
+			int			i;
+
+			/*
+			 * Need to check that members of the multi are below cutoff_xid,
+			 * otherwise we might later get into problems if the commit status
+			 * of a member is tested because the clog could have been
+			 * truncated.
+			 */
+			nmembers = GetMultiXactIdMembers(xid, &members, true);
+			for (i = 0; i < nmembers; i++)
+			{
+				TransactionId member = members[i].xid;
+				Assert(TransactionIdIsNormal(member));
+
+				/*
+				 * Cannot care about pure lockers, those are protected against
+				 * being read in dangerous situations via
+				 * OldestVisibleMXactId.
+				 */
+				if (members[i].status != MultiXactStatusNoKeyUpdate &&
+					members[i].status != MultiXactStatusUpdate)
+					continue;
+
+				if (TransactionIdPrecedes(member, cutoff_xid))
+				{
+					/* only one updater */
+					Assert(!freeze_xmax);
+
+					/*
+					 * If below the cutoff_xid it would have been pruned away
+					 * earlier.
+					 */
+					Assert(InRecovery || TransactionIdDidAbort(member));
+
+					freeze_xmax = true;
+				}
+			}
+		}
+	}
+	else if (TransactionIdIsNormal(xid) &&
+			 TransactionIdPrecedes(xid, cutoff_xid))
+	{
+		freeze_xmax = true;
+	}
+
+	if (freeze_xmax)
 	{
 		HeapTupleHeaderSetXmax(tuple, InvalidTransactionId);
 
@@ -5628,23 +5707,45 @@ heap_tuple_needs_freeze(HeapTupleHeader tuple, TransactionId cutoff_xid,
 		TransactionIdPrecedes(xid, cutoff_xid))
 		return true;
 
-	if (!(tuple->t_infomask & HEAP_XMAX_INVALID))
+	if (tuple->t_infomask & HEAP_XMAX_INVALID)
+		;
+	else if (tuple->t_infomask & HEAP_XMAX_IS_MULTI)
 	{
-		if (!(tuple->t_infomask & HEAP_XMAX_IS_MULTI))
-		{
-			xid = HeapTupleHeaderGetRawXmax(tuple);
-			if (TransactionIdIsNormal(xid) &&
-				TransactionIdPrecedes(xid, cutoff_xid))
-				return true;
-		}
+		MultiXactId multi;
+
+		multi = HeapTupleHeaderGetRawXmax(tuple);
+		if (MultiXactIdPrecedes(multi, cutoff_multi))
+			return true;
+		else if (HEAP_XMAX_IS_LOCKED_ONLY(tuple->t_infomask))
+			;
 		else
 		{
-			MultiXactId multi;
+			MultiXactMember *members;
+			int			nmembers;
+			int			i;
 
-			multi = HeapTupleHeaderGetRawXmax(tuple);
-			if (MultiXactIdPrecedes(multi, cutoff_multi))
-				return true;
+			nmembers = GetMultiXactIdMembers(xid, &members, true);
+			for (i = 0; i < nmembers; i++)
+			{
+				TransactionId member = members[i].xid;
+				Assert(TransactionIdIsNormal(member));
+
+				/* cannot care about lockers */
+				if (members[i].status != MultiXactStatusNoKeyUpdate ||
+					members[i].status != MultiXactStatusUpdate)
+					continue;
+
+				if (TransactionIdPrecedes(member, cutoff_xid))
+					return true;
+			}
 		}
+	}
+	else
+	{
+		xid = HeapTupleHeaderGetRawXmax(tuple);
+		if (TransactionIdIsNormal(xid) &&
+			TransactionIdPrecedes(xid, cutoff_xid))
+			return true;
 	}
 
 	if (tuple->t_infomask & HEAP_MOVED)

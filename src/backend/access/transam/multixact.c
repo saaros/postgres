@@ -445,6 +445,10 @@ MultiXactIdExpand(MultiXactId multi, TransactionId xid, MultiXactStatus status)
 
 	for (i = 0, j = 0; i < nmembers; i++)
 	{
+		/*
+		 * FIXME: is it possibly that we copy over too old updater xids
+		 * here?
+		 */
 		if (TransactionIdIsInProgress(members[i].xid) ||
 			((members[i].status > MultiXactStatusForUpdate) &&
 			 TransactionIdDidCommit(members[i].xid)))
