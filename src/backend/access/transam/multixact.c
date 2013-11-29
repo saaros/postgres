@@ -270,6 +270,8 @@ typedef struct mXactCacheEnt
 static mXactCacheEnt *MXactCache = NULL;
 static MemoryContext MXactContext = NULL;
 
+bool fudge_up_old_mxacts = false;
+
 #ifdef MULTIXACT_DEBUG
 #define debug_elog2(a,b) elog(a,b)
 #define debug_elog3(a,b,c) elog(a,b,c)
@@ -1246,6 +1248,27 @@ retry:
 
 		ptr[truelength].xid = *xactptr;
 		ptr[truelength].status = (*flagsptr >> bshift) & MXACT_MEMBER_XACT_BITMASK;
+
+		if (fudge_up_old_mxacts && TransactionIdPrecedes(*xactptr, ShmemVariableCache->oldestXid))
+		{
+			MultiXactStatus status = ptr[truelength].status;
+
+
+			if (status == MultiXactStatusNoKeyUpdate ||
+				status == MultiXactStatusUpdate)
+			{
+				elog(LOG, "fudging transaction %u in multi %u to frozen, status %d",
+					 *xactptr, multi, status);
+				ptr[truelength].xid = FrozenTransactionId;
+			}
+			else
+			{
+				elog(LOG, "fudging transaction %u in multi %u to be invisible, status %d",
+					 *xactptr, multi, status);
+				continue;
+			}
+		}
+
 		truelength++;
 	}
 

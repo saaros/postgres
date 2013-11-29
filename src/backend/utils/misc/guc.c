@@ -30,6 +30,7 @@
 #include "access/transam.h"
 #include "access/twophase.h"
 #include "access/xact.h"
+#include "access/multixact.h"
 #include "catalog/namespace.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
@@ -1432,6 +1433,16 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 
+	{
+		{"fudge_up_old_mxacts", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("don't error out on too old multixact contents."),
+			gettext_noop("this might give wrong answers"),
+			GUC_NOT_IN_SAMPLE
+		},
+		&fudge_up_old_mxacts,
+		false,
+		NULL, NULL, NULL
+	},
 	{
 		{"lo_compat_privileges", PGC_SUSET, COMPAT_OPTIONS_PREVIOUS,
 			gettext_noop("Enables backward compatibility mode for privilege checks on large objects."),

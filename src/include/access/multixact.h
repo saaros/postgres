@@ -75,6 +75,7 @@ typedef struct xl_multixact_create
 
 #define SizeOfMultiXactCreate (offsetof(xl_multixact_create, members))
 
+extern bool fudge_up_old_mxacts;
 
 extern MultiXactId MultiXactIdCreate(TransactionId xid1,
 				  MultiXactStatus status1, TransactionId xid2,
