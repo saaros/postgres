@@ -29,7 +29,7 @@
  * Karel Zak, Aug 2001
  * ----------
  */
-pg_encname	pg_encname_tbl[] =
+const pg_encname	pg_encname_tbl[] =
 {
 	{
 		"abc", PG_WIN1258
@@ -291,7 +291,7 @@ pg_encname	pg_encname_tbl[] =
 	}							/* last */
 };
 
-unsigned int pg_encname_tbl_sz = \
+const unsigned int pg_encname_tbl_sz = \
 sizeof(pg_encname_tbl) / sizeof(pg_encname_tbl[0]) - 1;
 
 /* ----------
@@ -304,7 +304,7 @@ sizeof(pg_encname_tbl) / sizeof(pg_encname_tbl[0]) - 1;
 #else
 #define DEF_ENC2NAME(name, codepage) { #name, PG_##name, codepage }
 #endif
-pg_enc2name pg_enc2name_tbl[] =
+const pg_enc2name pg_enc2name_tbl[] =
 {
 	DEF_ENC2NAME(SQL_ASCII, 0),
 	DEF_ENC2NAME(EUC_JP, 20932),
@@ -356,7 +356,7 @@ pg_enc2name pg_enc2name_tbl[] =
  * This covers all encodings except MULE_INTERNAL, which is alien to gettext.
  * ----------
  */
-pg_enc2gettext pg_enc2gettext_tbl[] =
+const pg_enc2gettext pg_enc2gettext_tbl[] =
 {
 	{PG_SQL_ASCII, "US-ASCII"},
 	{PG_UTF8, "UTF-8"},
@@ -469,11 +469,11 @@ clean_encoding_name(const char *key, char *newkey)
  * Search encoding by encoding name
  * ----------
  */
-pg_encname *
+const pg_encname *
 pg_char_to_encname_struct(const char *name)
 {
 	unsigned int nel = pg_encname_tbl_sz;
-	pg_encname *base = pg_encname_tbl,
+	const pg_encname *base = pg_encname_tbl,
 			   *last = base + nel - 1,
 			   *position;
 	int			result;
@@ -521,7 +521,7 @@ pg_char_to_encname_struct(const char *name)
 int
 pg_char_to_encoding(const char *name)
 {
-	pg_encname *p;
+	const pg_encname *p;
 
 	if (!name)
 		return -1;
@@ -545,7 +545,7 @@ pg_encoding_to_char(int encoding)
 {
 	if (PG_VALID_ENCODING(encoding))
 	{
-		pg_enc2name *p = &pg_enc2name_tbl[encoding];
+		const pg_enc2name *p = &pg_enc2name_tbl[encoding];
 
 		Assert(encoding == p->encoding);
 		return p->name;
