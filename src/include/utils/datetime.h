@@ -247,7 +247,9 @@ do { \
  * Include check for leap year.
  */
 
-extern const int day_tab[2][13];
+PG_SYM_HIDDEN extern const char *const months[];	/* month abbreviation	*/
+PG_SYM_HIDDEN extern const char *const days[];		/* full days		*/
+PG_SYM_HIDDEN extern const int day_tab[2][13];
 
 #define isleap(y) (((y) % 4) == 0 && (((y) % 100) != 0 || ((y) % 400) == 0))
 

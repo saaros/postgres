@@ -122,13 +122,6 @@
 
 
 /* ----------
- * External (defined in PgSQL datetime.c (timestamp utils))
- * ----------
- */
-extern const char *const months[];			/* month abbreviation	*/
-extern const char *const days[];			/* full days		*/
-
-/* ----------
  * Format parser structs
  * ----------
  */

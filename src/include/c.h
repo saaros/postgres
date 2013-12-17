@@ -151,6 +151,10 @@
 #define __attribute__(_arg_)
 #endif
 
+#if defined (__GNUC__) && __GNUC__ >= 4
+#define PG_SYM_HIDDEN __attribute__((visibility ("hidden")))
+#endif
+
 /* ----------------------------------------------------------------
  *				Section 2:	bool, true, false, TRUE, FALSE, NULL
  * ----------------------------------------------------------------

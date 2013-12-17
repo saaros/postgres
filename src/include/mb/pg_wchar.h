@@ -311,8 +311,8 @@ typedef struct pg_encname
 	pg_enc		encoding;
 } pg_encname;
 
-extern const pg_encname pg_encname_tbl[];
-extern const unsigned int pg_encname_tbl_sz;
+PG_SYM_HIDDEN extern const pg_encname pg_encname_tbl[];
+PG_SYM_HIDDEN extern const unsigned int pg_encname_tbl_sz;
 
 /*
  * Careful:
@@ -329,7 +329,7 @@ typedef struct pg_enc2name
 #endif
 } pg_enc2name;
 
-extern const pg_enc2name pg_enc2name_tbl[];
+PG_SYM_HIDDEN extern const pg_enc2name pg_enc2name_tbl[];
 
 /*
  * Encoding names for gettext
@@ -340,7 +340,7 @@ typedef struct pg_enc2gettext
 	const char *name;
 } pg_enc2gettext;
 
-extern const pg_enc2gettext pg_enc2gettext_tbl[];
+PG_SYM_HIDDEN extern const pg_enc2gettext pg_enc2gettext_tbl[];
 
 /*
  * pg_wchar stuff
@@ -373,7 +373,7 @@ typedef struct
 	int			maxmblen;		/* max bytes for a char in this encoding */
 } pg_wchar_tbl;
 
-extern const pg_wchar_tbl pg_wchar_table[];
+PG_SYM_HIDDEN extern const pg_wchar_tbl pg_wchar_table[];
 
 /*
  * UTF-8 to local code conversion map
