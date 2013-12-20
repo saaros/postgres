@@ -264,7 +264,6 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 	Datum		toast_options;
 	ListCell   *lc;
 	int			attnum;
-	static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
 
 	Assert(into != NULL);		/* else somebody forgot to set it */
 
@@ -368,7 +367,7 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 	toast_options = transformRelOptions((Datum) 0,
 										create->options,
 										"toast",
-										validnsps,
+										"toast",
 										true, false);
 
 	(void) heap_reloptions(RELKIND_TOASTVALUE, toast_options, true);

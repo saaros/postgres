@@ -49,7 +49,7 @@ extern PGDLLIMPORT double cpu_tuple_cost;
 extern PGDLLIMPORT double cpu_index_tuple_cost;
 extern PGDLLIMPORT double cpu_operator_cost;
 extern PGDLLIMPORT int effective_cache_size;
-extern Cost disable_cost;
+extern const Cost disable_cost;
 extern bool enable_seqscan;
 extern bool enable_indexscan;
 extern bool enable_indexonlyscan;

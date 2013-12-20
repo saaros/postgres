@@ -81,7 +81,7 @@
  * This array provides a common part of system object structure; to help
  * consolidate routines to handle various kind of object classes.
  */
-typedef struct
+typedef const struct
 {
 	Oid			class_oid;		/* oid of catalog */
 	Oid			oid_index_oid;	/* oid of index on system oid column */
@@ -101,7 +101,7 @@ typedef struct
 										 * class? */
 } ObjectPropertyType;
 
-static ObjectPropertyType ObjectProperty[] =
+static const ObjectPropertyType ObjectProperty[] =
 {
 	{
 		CastRelationId,

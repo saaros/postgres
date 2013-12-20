@@ -51,9 +51,6 @@ typedef enum relopt_kind
 	RELOPT_KIND_MAX = (1 << 30)
 } relopt_kind;
 
-/* reloption namespaces allowed for heaps -- currently only TOAST */
-#define HEAP_RELOPT_NAMESPACES { "toast", NULL }
-
 /* generic struct to hold shared data */
 typedef struct relopt_gen
 {
@@ -251,7 +248,7 @@ extern void add_string_reloption(bits32 kinds, char *name, char *desc,
 					 char *default_val, validate_string_relopt validator);
 
 extern Datum transformRelOptions(Datum oldOptions, List *defList,
-					char *namspace, char *validnsps[],
+					const char *namspace, const char *validnsp,
 					bool ignoreOids, bool isReset);
 extern List *untransformRelOptions(Datum options);
 extern bytea *extractRelOptions(HeapTuple tuple, TupleDesc tupdesc,

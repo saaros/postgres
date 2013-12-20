@@ -564,18 +564,17 @@ add_string_reloption(bits32 kinds, char *name, char *desc, char *default_val,
  * If ignoreOids is true, then we should ignore any occurrence of "oids"
  * in the list (it will be or has been handled by interpretOidsOption()).
  *
- * Note that this is not responsible for determining whether the options
- * are valid, but it does check that namespaces for all the options given are
- * listed in validnsps.  The NULL namespace is always valid and need not be
- * explicitly listed.  Passing a NULL pointer means that only the NULL
- * namespace is valid.
+ * Note that this is not responsible for determining whether the options are
+ * valid, but it does check that namespaces for all the options given
+ * matches validnsp.  The NULL namespace is always valid.  Passing a NULL
+ * valinsp means that only the NULL namespace is valid.
  *
  * Both oldOptions and the result are text arrays (or NULL for "default"),
  * but we declare them as Datums to avoid including array.h in reloptions.h.
  */
 Datum
-transformRelOptions(Datum oldOptions, List *defList, char *namspace,
-					char *validnsps[], bool ignoreOids, bool isReset)
+transformRelOptions(Datum oldOptions, List *defList, const char *namspace,
+					const char *validnsp, bool ignoreOids, bool isReset)
 {
 	Datum		result;
 	ArrayBuildState *astate;
@@ -667,23 +666,7 @@ transformRelOptions(Datum oldOptions, List *defList, char *namspace,
 			 */
 			if (def->defnamespace != NULL)
 			{
-				bool		valid = false;
-				int			i;
-
-				if (validnsps)
-				{
-					for (i = 0; validnsps[i]; i++)
-					{
-						if (pg_strcasecmp(def->defnamespace,
-										  validnsps[i]) == 0)
-						{
-							valid = true;
-							break;
-						}
-					}
-				}
-
-				if (!valid)
+				if (!validnsp || pg_strcasecmp(def->defnamespace, validnsp))
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 							 errmsg("unrecognized parameter namespace \"%s\"",

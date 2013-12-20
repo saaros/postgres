@@ -937,7 +937,6 @@ ProcessUtilitySlow(Node *parsetree,
 						if (IsA(stmt, CreateStmt))
 						{
 							Datum		toast_options;
-							static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
 
 							/* Create the table itself */
 							relOid = DefineRelation((CreateStmt *) stmt,
@@ -957,7 +956,7 @@ ProcessUtilitySlow(Node *parsetree,
 							toast_options = transformRelOptions((Datum) 0,
 											  ((CreateStmt *) stmt)->options,
 																"toast",
-																validnsps,
+																"toast",
 																true,
 																false);
 							(void) heap_reloptions(RELKIND_TOASTVALUE,

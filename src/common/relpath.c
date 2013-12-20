@@ -20,16 +20,14 @@
 #include "common/relpath.h"
 #include "storage/backendid.h"
 
-#define FORKNAMECHARS	4		/* max chars for a fork name */
-
 /*
  * Lookup table of fork name by fork number.
  *
  * If you add a new entry, remember to update the errhint below, and the
- * documentation for pg_relation_size(). Also keep FORKNAMECHARS above
- * up-to-date.
+ * documentation for pg_relation_size(). Also keep FORKNAMECHARS in
+ * src/include/common/relpath.h up-to-date.
  */
-const char *forkNames[] = {
+const char forkNames[][FORKNAMECHARS+1] = {
 	"main",						/* MAIN_FORKNUM */
 	"fsm",						/* FSM_FORKNUM */
 	"vm",						/* VISIBILITYMAP_FORKNUM */

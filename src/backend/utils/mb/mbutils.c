@@ -55,9 +55,9 @@ static FmgrInfo *ToClientConvProc = NULL;
 /*
  * These variables track the currently-selected encodings.
  */
-static pg_enc2name *ClientEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
-static pg_enc2name *DatabaseEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
-static pg_enc2name *MessageEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
+static const pg_enc2name *ClientEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
+static const pg_enc2name *DatabaseEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
+static const pg_enc2name *MessageEncoding = &pg_enc2name_tbl[PG_SQL_ASCII];
 
 /*
  * During backend startup we can't set client encoding because we (a)
@@ -903,7 +903,7 @@ raw_pg_bind_textdomain_codeset(const char *domainname, int encoding)
 	bool		elog_ok = (CurrentMemoryContext != NULL);
 	int			i;
 
-	for (i = 0; pg_enc2gettext_tbl[i].name != NULL; i++)
+	for (i = 0; *pg_enc2gettext_tbl[i].name; i++)
 	{
 		if (pg_enc2gettext_tbl[i].encoding == encoding)
 		{

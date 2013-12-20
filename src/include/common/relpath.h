@@ -21,11 +21,12 @@
 #include "storage/relfilenode.h"
 
 
+#define FORKNAMECHARS		4		/* max chars for a fork name */
 #define OIDCHARS		10		/* max chars printed by %u */
 #define TABLESPACE_VERSION_DIRECTORY	"PG_" PG_MAJORVERSION "_" \
 									CppAsString2(CATALOG_VERSION_NO)
 
-extern const char *forkNames[];
+extern const char forkNames[][FORKNAMECHARS+1];
 extern int	forkname_chars(const char *str, ForkNumber *fork);
 extern char *relpathbackend(RelFileNode rnode, BackendId backend,
 			   ForkNumber forknum);

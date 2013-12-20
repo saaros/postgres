@@ -40,7 +40,7 @@
 struct encoding_match
 {
 	enum pg_enc pg_enc_code;
-	const char *system_enc_name;
+	const char system_enc_name[16];
 };
 
 static const struct encoding_match encoding_match_list[] = {
@@ -185,7 +185,7 @@ static const struct encoding_match encoding_match_list[] = {
 
 	{PG_SQL_ASCII, "US-ASCII"},
 
-	{PG_SQL_ASCII, NULL}		/* end marker */
+	{PG_SQL_ASCII, ""}		/* end marker */
 };
 
 #ifdef WIN32
@@ -251,7 +251,7 @@ pg_codepage_to_encoding(UINT cp)
 	sprintf(sys, "CP%u", cp);
 
 	/* Check the table */
-	for (i = 0; encoding_match_list[i].system_enc_name; i++)
+	for (i = 0; *encoding_match_list[i].system_enc_name; i++)
 		if (pg_strcasecmp(sys, encoding_match_list[i].system_enc_name) == 0)
 			return encoding_match_list[i].pg_enc_code;
 
@@ -347,7 +347,7 @@ pg_get_encoding_from_locale(const char *ctype, bool write_message)
 		return -1;				/* out of memory; unlikely */
 
 	/* Check the table */
-	for (i = 0; encoding_match_list[i].system_enc_name; i++)
+	for (i = 0; *encoding_match_list[i].system_enc_name; i++)
 	{
 		if (pg_strcasecmp(sys, encoding_match_list[i].system_enc_name) == 0)
 		{
