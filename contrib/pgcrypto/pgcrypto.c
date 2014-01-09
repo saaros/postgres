@@ -35,6 +35,7 @@
 
 #include "parser/scansup.h"
 #include "utils/builtins.h"
+#include "utils/uuid.h"
 
 #include "px.h"
 #include "px-crypt.h"
@@ -441,6 +442,27 @@ pg_random_bytes(PG_FUNCTION_ARGS)
 				 errmsg("Random generator error: %s", px_strerror(err))));
 
 	PG_RETURN_BYTEA_P(res);
+}
+
+/* SQL function: pg_random_uuid() returns uuid */
+PG_FUNCTION_INFO_V1(pg_random_uuid);
+
+Datum
+pg_random_uuid(PG_FUNCTION_ARGS)
+{
+	unsigned char *buf = (unsigned char *) palloc(16);
+	/* get 128 random bits */
+	int err = px_get_random_bytes(buf, 16);
+	if (err < 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_EXTERNAL_ROUTINE_INVOCATION_EXCEPTION),
+				 errmsg("Random generator error: %s", px_strerror(err))));
+
+	/* set UUID v4 magic numbers, http://tools.ietf.org/html/rfc4122#section-4.4 */
+	buf[6] = (buf[6] & 0x0f) | 0x40;
+	buf[8] = (buf[8] & 0x3f) | 0x80;
+
+	PG_RETURN_UUID_P(buf);
 }
 
 static void *
