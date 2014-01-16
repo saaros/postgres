@@ -74,7 +74,9 @@
 #include "storage/ipc.h"
 #include "storage/proc.h"
 #include "tcop/tcopprot.h"
+#include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/guc_tables.h"
 #include "utils/memutils.h"
 #include "utils/ps_status.h"
 
@@ -110,6 +112,17 @@ int			Log_error_verbosity = PGERROR_VERBOSE;
 char	   *Log_line_prefix = NULL;		/* format for extra log line info */
 int			Log_destination = LOG_DESTINATION_STDERR;
 char	   *Log_destination_string = NULL;
+
+typedef struct
+{
+	int sqlstate;
+	int loglevel;
+} SqlstateLoglevel;
+
+static size_t log_error_statement_by_sqlstate_len;
+static SqlstateLoglevel *log_error_statement_by_sqlstate;
+
+static int	get_error_level_for_sqlstate(int sqlstate);
 
 #ifdef HAVE_SYSLOG
 
@@ -2219,6 +2232,7 @@ static void
 write_csvlog(ErrorData *edata)
 {
 	StringInfoData buf;
+	int			requested_log_level;
 	bool		print_stmt = false;
 
 	/* static counter for line numbers */
@@ -2362,7 +2376,10 @@ write_csvlog(ErrorData *edata)
 	appendStringInfoChar(&buf, ',');
 
 	/* user query --- only reported if not disabled by the caller */
-	if (is_log_level_output(edata->elevel, log_min_error_statement) &&
+	requested_log_level = get_error_level_for_sqlstate(edata->sqlerrcode);
+	if (requested_log_level < 0)
+		requested_log_level = log_min_error_statement;
+	if (is_log_level_output(edata->elevel, requested_log_level) &&
 		debug_query_string != NULL &&
 		!edata->hide_stmt)
 		print_stmt = true;
@@ -2435,6 +2452,7 @@ static void
 send_message_to_server_log(ErrorData *edata)
 {
 	StringInfoData buf;
+	int			requested_log_level;
 
 	initStringInfo(&buf);
 
@@ -2519,7 +2537,10 @@ send_message_to_server_log(ErrorData *edata)
 	/*
 	 * If the user wants the query that generated this error logged, do it.
 	 */
-	if (is_log_level_output(edata->elevel, log_min_error_statement) &&
+	requested_log_level = get_error_level_for_sqlstate(edata->sqlerrcode);
+	if (requested_log_level < 0)
+		requested_log_level = log_min_error_statement;
+	if (is_log_level_output(edata->elevel, requested_log_level) &&
 		debug_query_string != NULL &&
 		!edata->hide_stmt)
 	{
@@ -3320,4 +3341,212 @@ trace_recovery(int trace_level)
 		return LOG;
 
 	return trace_level;
+}
+
+
+/*
+ * Statement log error level can be overriden per sqlstate, the variable
+ * log_error_statement_by_sqlstate is a sorted (by sqlstate) array of
+ * log_error_statement_by_sqlstate_len SqlstateLoglevel structs.
+ */
+
+/*
+ * get_error_level_for_sqlstate - perform a binary search for the requested
+ * state and return if it was found; return -1 if it was not found.
+ */
+static int
+get_error_level_for_sqlstate(int sqlstate)
+{
+	size_t		left = 0,
+				right = log_error_statement_by_sqlstate_len;
+
+	while (left < right)
+	{
+		size_t		middle = left + (right - left) / 2;
+		SqlstateLoglevel	*entry = log_error_statement_by_sqlstate + middle;
+
+		if (entry->sqlstate == sqlstate)
+			return entry->loglevel;
+		else if (entry->sqlstate < sqlstate)
+			left = middle + 1;
+		else
+			right = middle;
+	}
+	return -1;
+}
+
+/* sort by sqlstate */
+static int
+sqlstate_loglevel_compare_sqlstate(const void *a, const void *b)
+{
+	const SqlstateLoglevel *sla = (const SqlstateLoglevel *) a;
+	const SqlstateLoglevel *slb = (const SqlstateLoglevel *) b;
+
+	if (sla->sqlstate < slb->sqlstate)
+		return -1;
+	if (sla->sqlstate > slb->sqlstate)
+		return 1;
+	return 0;
+}
+
+/*
+ * check_log_error_statement_by_sqlstate - validate sqlstate:errorlevel
+ * lists and create a sorted mapping from them; last occurance of each
+ * sqlstate is used.
+ */
+bool
+check_log_error_statement_by_sqlstate(char **newval, void **extra, GucSource source)
+{
+	const struct config_enum_entry *enum_entry;
+	char	   *rawstring,
+			   *new_newval,
+			   *vptr;
+	List	   *elemlist;
+	ListCell   *l;
+	unsigned char	*result;
+	SqlstateLoglevel	*new_map = NULL;
+	int			i,
+				new_map_len = 0;
+
+	/* Need a modifiable copy of string */
+	rawstring = pstrdup(*newval);
+
+	/* Parse string into list of identifiers */
+	if (!SplitIdentifierString(rawstring, ',', &elemlist))
+	{
+		/* syntax error in list */
+		GUC_check_errdetail("List syntax is invalid.");
+		pfree(rawstring);
+		list_free(elemlist);
+		return false;
+	}
+
+	/*
+	 * GUC wants malloced results, allocate room for a size_t count enough
+     * elements to hold all entries in the input string (even if some are
+     * dropped as duplicates.)
+	 */
+	result = (unsigned char *) malloc(sizeof(size_t) +
+									  list_length(elemlist) * sizeof(SqlstateLoglevel));
+	if (!result)
+	{
+		pfree(rawstring);
+		list_free(elemlist);
+		return false;
+	}
+	new_map = (SqlstateLoglevel *) result + sizeof(size_t);
+
+	/* validate list and insert the results in a sorted array */
+	foreach(l, elemlist)
+	{
+		char	   *tok = lfirst(l),
+				   *level_str = strchr(tok, ':');
+		bool		found = false;
+		int			loglevel,
+					sqlstate;
+
+		new_map[new_map_len].loglevel = -1;
+		if (level_str != NULL && (level_str - tok) == 5)
+		{
+			for (enum_entry = server_message_level_options;
+				 enum_entry && enum_entry->name;
+				 enum_entry++)
+			{
+				if (pg_strcasecmp(enum_entry->name, level_str + 1) == 0)
+				{
+					loglevel = enum_entry->val;
+					break;
+				}
+			}
+		}
+		if (new_map[new_map_len].loglevel < 0)
+		{
+			GUC_check_errdetail("Invalid sqlstate error definition: \"%s\".", tok);
+			new_map_len = -1;
+			break;
+		}
+		sqlstate = MAKE_SQLSTATE(pg_ascii_toupper(tok[0]), pg_ascii_toupper(tok[1]),
+								 pg_ascii_toupper(tok[2]), pg_ascii_toupper(tok[3]),
+								 pg_ascii_toupper(tok[4]));
+		for (i = 0; i < new_map_len; i++)
+		{
+			if (new_map[i].sqlstate == sqlstate)
+			{
+				new_map[i].loglevel = loglevel;
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			new_map[new_map_len].sqlstate = sqlstate;
+			new_map[new_map_len++].loglevel = loglevel;
+		}
+	}
+
+	pfree(rawstring);
+	list_free(elemlist);
+
+	if (new_map_len < 0)
+	{
+		free(result);
+		return false;
+	}
+
+	qsort((void *) new_map, new_map_len, sizeof(SqlstateLoglevel),
+		  sqlstate_loglevel_compare_sqlstate);
+
+	/* store the length in the begining of the result buffer */
+	*((size_t *) result) = new_map_len;
+
+	/* rewrite newval to drop duplicates */
+	new_newval = (char *) malloc(strlen(*newval) + 1);
+	if (!new_newval)
+	{
+		free(result);
+		return false;
+	}
+
+	vptr = new_newval;
+	for (i = 0; i < new_map_len; i++)
+	{
+		const char *level_str = "null";
+
+		for (enum_entry = server_message_level_options;
+			 enum_entry && enum_entry->name;
+			 enum_entry++)
+		{
+			if (enum_entry->val == new_map[i].loglevel)
+			{
+				level_str = enum_entry->name;
+				break;
+			}
+		}
+
+		vptr += sprintf(vptr, "%s%s:%s",
+						(i > 0) ? "," : "",
+						unpack_sql_state(new_map[i].sqlstate),
+						level_str);
+	}
+	*vptr = 0;
+
+	free(*newval);
+	*newval = new_newval;
+	*extra = result;
+
+	return true;
+}
+
+/*
+ * assign_log_error_statement_by_sqlstate - take the result generated by
+ * check_log_error_statement_by_sqlstate into use.  'extra' contains a
+ * size_t and an array of SqlstateLoglevels.
+ */
+void
+assign_log_error_statement_by_sqlstate(const char *newval, void *extra)
+{
+	unsigned char	*myextra = (unsigned char *) extra;
+
+	log_error_statement_by_sqlstate_len = *(size_t *) myextra;
+	log_error_statement_by_sqlstate = (SqlstateLoglevel *) (myextra + sizeof(size_t));
 }
