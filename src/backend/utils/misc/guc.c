@@ -245,7 +245,7 @@ static const struct config_enum_entry client_message_level_options[] = {
 	{NULL, 0, false}
 };
 
-static const struct config_enum_entry server_message_level_options[] = {
+const struct config_enum_entry server_message_level_options[] = {
 	{"debug", DEBUG2, true},
 	{"debug5", DEBUG5, false},
 	{"debug4", DEBUG4, false},
@@ -465,6 +465,7 @@ static char *server_version_string;
 static int	server_version_num;
 static char *timezone_string;
 static char *log_timezone_string;
+static char *log_error_statement_by_sqlstate_str;
 static char *timezone_abbreviations_string;
 static char *XactIsoLevel_string;
 static char *session_authorization_string;
@@ -2944,6 +2945,17 @@ static struct config_string ConfigureNamesString[] =
 		&Log_filename,
 		"postgresql-%Y-%m-%d_%H%M%S.log",
 		NULL, NULL, NULL
+	},
+
+	{
+		{"log_error_statement_by_sqlstate", PGC_SUSET, LOGGING_WHEN,
+			gettext_noop("Overrides minimum error level per error type"),
+			gettext_noop("Value must be a comma-separated list in the format "
+						 "\"sqlstate:level,...\"."),
+		},
+		&log_error_statement_by_sqlstate_str,
+		"",
+		check_log_error_statement_by_sqlstate, assign_log_error_statement_by_sqlstate, NULL
 	},
 
 	{

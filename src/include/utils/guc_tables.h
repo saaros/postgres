@@ -251,6 +251,7 @@ extern const char *const config_group_names[];
 extern const char *const config_type_names[];
 extern const char *const GucContext_Names[];
 extern const char *const GucSource_Names[];
+extern const struct config_enum_entry server_message_level_options[];
 
 /* get the current set of variables */
 extern struct config_generic **get_guc_variables(void);

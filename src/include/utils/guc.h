@@ -391,4 +391,8 @@ extern bool check_effective_cache_size(int *newval, void **extra, GucSource sour
 extern void set_default_effective_cache_size(void);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
+/* in src/backend/utils/error/elog.c */
+extern void assign_log_error_statement_by_sqlstate(const char *newval, void *extra);
+extern bool check_log_error_statement_by_sqlstate(char **newval, void **extra, GucSource source);
+
 #endif   /* GUC_H */
