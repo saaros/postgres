@@ -275,3 +275,11 @@ set default_text_search_config = no_such_config;
 select func_with_bad_set();
 
 reset check_function_bodies;
+
+-- Test logging options
+SET log_error_statement_by_sqlstate = 'XX000:panic,22012:error,23514:panic';
+SHOW log_error_statement_by_sqlstate;
+SET log_error_statement_by_sqlstate = '';
+SHOW log_error_statement_by_sqlstate;
+SET log_error_statement_by_sqlstate = 'x';
+SHOW log_error_statement_by_sqlstate;
