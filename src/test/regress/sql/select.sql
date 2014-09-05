@@ -207,3 +207,50 @@ drop function sillysrf(int);
 -- (see bug #5084)
 select * from (values (2),(null),(1)) v(k) where k = k order by k;
 select * from (values (2),(null),(1)) v(k) where k = k;
+
+-- Test warnings for missing AS for aliases
+SET missing_as_warning TO false;
+select 1 foo, 2 bar;
+select 1 as foo, 2 as bar;
+select count(*) foo;
+
+select 1 from onek o1 limit 1;
+select 1 from onek o1, onek o2 limit 1;
+select 1 from onek as o1, onek as o2 limit 1;
+select un1 from onek ok (un1) where un1 = 88888888;
+select un1 from onek as ok (un1) where un1 = 88888888;
+update onek ok set unique1 = -88888888 where unique1 = 88888888;
+update onek as ok set unique1 = -88888888 where unique1 = 88888888;
+
+create function func_for_missing_as() returns record language sql as 'select 1::int';
+select * from func_for_missing_as() f (id int);
+select * from func_for_missing_as() as f (id int);
+
+SET missing_as_warning TO true;
+select 1 foo, 2 bar;
+select 1 as foo, 2 as bar;
+select count(*) foo;
+
+do $$
+declare
+    i1 int;
+    i2 int;
+begin
+    select unique1 unique2 FROM onek into i1, i2;
+    select unique1, unique2 FROM onek into i1, i2;
+end;
+$$;
+
+select 1 from onek o1 limit 1;
+select 1 from onek o1, onek o2 limit 1;
+select 1 from onek as o1, onek as o2 limit 1;
+select un1 from onek ok (un1) where un1 = 88888888;
+select un1 from onek as ok (un1) where un1 = 88888888;
+update onek ok set unique1 = -88888888 where unique1 = 88888888;
+update onek as ok set unique1 = -88888888 where unique1 = 88888888;
+
+select * from func_for_missing_as() f (id int);
+select * from func_for_missing_as() as f (id int);
+
+drop function func_for_missing_as();
+SET missing_as_warning TO false;

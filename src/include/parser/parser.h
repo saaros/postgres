@@ -30,6 +30,8 @@ extern int	backslash_quote;
 extern bool escape_string_warning;
 extern PGDLLIMPORT bool standard_conforming_strings;
 
+/* GUC variables in gram.y */
+extern bool missing_as_warning;
 
 /* Primary entry point for the raw parsing functions */
 extern List *raw_parser(const char *str);

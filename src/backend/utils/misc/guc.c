@@ -1350,6 +1350,17 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 
 	{
+		{"missing_as_warning", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("Warn about missing AS for column or table aliases."),
+			NULL,
+			GUC_REPORT
+		},
+		&missing_as_warning,
+		false,
+		NULL, NULL, NULL
+	},
+
+	{
 		{"escape_string_warning", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
 			gettext_noop("Warn about backslash escapes in ordinary string literals."),
 			NULL
