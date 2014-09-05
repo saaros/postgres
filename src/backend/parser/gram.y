@@ -65,6 +65,10 @@
 #include "utils/xml.h"
 
 
+/* GUCs */
+bool missing_as_warning = false;
+
+
 /*
  * Location tracking support --- simpler than bison's default, since we only
  * want to track the start position not the end position of each nonterminal.
@@ -10119,12 +10123,20 @@ alias_clause:
 				}
 			| ColId '(' name_list ')'
 				{
+					if (missing_as_warning)
+						ereport(WARNING,
+								(errmsg("alias without explicit AS and missing_as_warning enabled"),
+								parser_errposition(@3)));
 					$$ = makeNode(Alias);
 					$$->aliasname = $1;
 					$$->colnames = $3;
 				}
 			| ColId
 				{
+					if (missing_as_warning)
+						ereport(WARNING,
+								(errmsg("alias without explicit AS and missing_as_warning enabled"),
+								parser_errposition(@1)));
 					$$ = makeNode(Alias);
 					$$->aliasname = $1;
 				}
@@ -10156,6 +10168,10 @@ func_alias_clause:
 			| ColId '(' TableFuncElementList ')'
 				{
 					Alias *a = makeNode(Alias);
+					if (missing_as_warning)
+						ereport(WARNING,
+								(errmsg("alias without explicit AS and missing_as_warning enabled"),
+								parser_errposition(@1)));
 					a->aliasname = $1;
 					$$ = list_make2(a, $3);
 				}
@@ -10244,6 +10260,10 @@ relation_expr_opt_alias: relation_expr					%prec UMINUS
 			| relation_expr ColId
 				{
 					Alias *alias = makeNode(Alias);
+					if (missing_as_warning)
+						ereport(WARNING,
+								(errmsg("alias without explicit AS and missing_as_warning enabled"),
+								parser_errposition(@2)));
 					alias->aliasname = $2;
 					$1->alias = alias;
 					$$ = $1;
@@ -12577,6 +12597,10 @@ target_el:	a_expr AS ColLabel
 			 */
 			| a_expr IDENT
 				{
+					if (missing_as_warning)
+						ereport(WARNING,
+								(errmsg("alias without explicit AS and missing_as_warning enabled"),
+								parser_errposition(@2)));
 					$$ = makeNode(ResTarget);
 					$$->name = $2;
 					$$->indirection = NIL;
