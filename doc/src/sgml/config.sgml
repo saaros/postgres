@@ -6529,6 +6529,44 @@ dynamic_library_path = 'C:\tools\postgresql;H:\my_project\lib;$libdir'
       </listitem>
      </varlistentry>
 
+     <varlistentry id="guc-extension-directory" xreflabel="extension_directory">
+      <term><varname>extension_directory</varname> (<type>string</type>)
+      <indexterm>
+       <primary><varname>extension_directory</> configuration parameter</primary>
+      </indexterm>
+      <indexterm><primary>extensions</></>
+      </term>
+      <listitem>
+       <para>
+        Look up extensions from this path when an extension is created using
+        the <command>CREATE EXTENSION</command>.
+       </para>
+
+       <para>
+        The value for <varname>extension_directory</varname> must be an
+        existing directory containing <literal>.control</literal> files for
+        extensions.
+       </para>
+
+       <para>
+        By default this is the empty string, which uses a directory based
+        on the compiled-in <productname>PostgreSQL</productname> package
+        share data directory; this is where the extensions provided by the
+        standard <productname>PostgreSQL</productname> distribution are
+        installed.
+       </para>
+
+       <para>
+        This parameter can be changed at run time by superusers, but a
+        setting done that way will only persist until the end of the
+        client connection, so this method should be reserved for
+        development purposes. The recommended way to set this parameter
+        is in the <filename>postgresql.conf</filename> configuration
+        file.
+       </para>
+      </listitem>
+     </varlistentry>
+
      <varlistentry id="guc-gin-fuzzy-search-limit" xreflabel="gin_fuzzy_search_limit">
       <term><varname>gin_fuzzy_search_limit</varname> (<type>integer</type>)
       <indexterm>

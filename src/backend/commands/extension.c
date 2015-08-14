@@ -59,6 +59,9 @@
 #include "utils/tqual.h"
 
 
+/* GUC */
+char	   *Extension_directory;
+
 /* Globally visible state variables */
 bool		creating_extension = false;
 Oid			CurrentExtensionObject = InvalidOid;
@@ -352,6 +355,9 @@ get_extension_control_directory(void)
 	char		sharepath[MAXPGPATH];
 	char	   *result;
 
+	if (Extension_directory != NULL)
+		return pstrdup(Extension_directory);
+
 	get_share_path(my_exec_path, sharepath);
 	result = (char *) palloc(MAXPGPATH);
 	snprintf(result, MAXPGPATH, "%s/extension", sharepath);
@@ -362,13 +368,11 @@ get_extension_control_directory(void)
 static char *
 get_extension_control_filename(const char *extname)
 {
-	char		sharepath[MAXPGPATH];
 	char	   *result;
 
-	get_share_path(my_exec_path, sharepath);
 	result = (char *) palloc(MAXPGPATH);
-	snprintf(result, MAXPGPATH, "%s/extension/%s.control",
-			 sharepath, extname);
+	snprintf(result, MAXPGPATH, "%s/%s.control",
+			 get_extension_control_directory(), extname);
 
 	return result;
 }
@@ -376,12 +380,12 @@ get_extension_control_filename(const char *extname)
 static char *
 get_extension_script_directory(ExtensionControlFile *control)
 {
-	char		sharepath[MAXPGPATH];
 	char	   *result;
+	char	   *extdir;
 
 	/*
 	 * The directory parameter can be omitted, absolute, or relative to the
-	 * installation's share directory.
+	 * extension directory.
 	 */
 	if (!control->directory)
 		return get_extension_control_directory();
@@ -389,9 +393,10 @@ get_extension_script_directory(ExtensionControlFile *control)
 	if (is_absolute_path(control->directory))
 		return pstrdup(control->directory);
 
-	get_share_path(my_exec_path, sharepath);
 	result = (char *) palloc(MAXPGPATH);
-	snprintf(result, MAXPGPATH, "%s/%s", sharepath, control->directory);
+	extdir = get_extension_control_directory();
+	get_parent_directory(extdir);
+	snprintf(result, MAXPGPATH, "%s/%s", extdir, control->directory);
 
 	return result;
 }

@@ -33,6 +33,7 @@
 #include "access/xact.h"
 #include "catalog/namespace.h"
 #include "commands/async.h"
+#include "commands/extension.h"
 #include "commands/prepare.h"
 #include "commands/vacuum.h"
 #include "commands/variable.h"
@@ -2898,6 +2899,17 @@ static struct config_string ConfigureNamesString[] =
 		},
 		&Dynamic_library_path,
 		"$libdir",
+		NULL, NULL, NULL
+	},
+
+	{
+		{"extension_directory", PGC_SUSET, CLIENT_CONN_OTHER,
+			gettext_noop("Sets the directory from which extensions are installed."),
+			NULL,
+			GUC_SUPERUSER_ONLY
+		},
+		&Extension_directory,
+		NULL,
 		NULL, NULL, NULL
 	},
 

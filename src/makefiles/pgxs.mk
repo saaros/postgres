@@ -272,9 +272,15 @@ installcheck: submake $(REGRESS_PREP)
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(REGRESS)
 
 ifdef PGXS
+abs_top_builddir ?= $(shell pwd)
+
 check:
-	@echo '"$(MAKE) check" is not supported.'
-	@echo 'Do "$(MAKE) install", then "$(MAKE) installcheck" instead.'
+	rm -rf "$(abs_top_builddir)/tmp_install"
+	$(MAKE) install "DESTDIR=$(abs_top_builddir)/tmp_install"
+	sed 's,$$libdir,$(abs_top_builddir)/tmp_install$(pkglibdir),g' -i '$(abs_top_builddir)/tmp_install$(datadir)/extension/$(addsuffix .control, $(EXTENSION))'
+	echo "dynamic_library_path = '$(abs_top_builddir)/tmp_install$(pkglibdir)/'" > "$(abs_top_builddir)/tmp_install/postgresql_temp.conf"
+	echo "extension_directory = '$(abs_top_builddir)/tmp_install$(datadir)/extension/'" >> "$(abs_top_builddir)/tmp_install/postgresql_temp.conf"
+	$(pg_regress_check) $(REGRESS_OPTS) $(REGRESS) --temp-config="$(abs_top_builddir)/tmp_install/postgresql_temp.conf"
 else
 check: submake $(REGRESS_PREP)
 	$(pg_regress_check) $(REGRESS_OPTS) $(REGRESS)

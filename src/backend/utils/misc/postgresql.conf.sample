@@ -558,6 +558,8 @@
 #dynamic_library_path = '$libdir'
 #local_preload_libraries = ''
 #session_preload_libraries = ''
+#extension_directory = ''		# load extensions from this directory
+					# instead of installed share directory
 
 
 #------------------------------------------------------------------------------

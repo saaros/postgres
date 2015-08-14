@@ -315,7 +315,9 @@ BZIP2	= bzip2
 
 # Testing
 
+ifndef PGXS
 check: temp-install
+endif
 
 .PHONY: temp-install
 temp-install:

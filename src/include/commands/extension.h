@@ -17,6 +17,8 @@
 #include "catalog/objectaddress.h"
 #include "nodes/parsenodes.h"
 
+/* GUC */
+extern char *Extension_directory;
 
 /*
  * creating_extension is only true while running a CREATE EXTENSION command.
