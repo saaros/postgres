@@ -3359,11 +3359,13 @@ jsonb_concat(PG_FUNCTION_ARGS)
 			   *it2;
 
 	/*
-	 * If one of the jsonb is empty, just return other.
+	 * If one of the jsonb is empty, just return other if it's not
+	 * scalar.  If it's a scalar we need to perform concatenation to
+	 * make sure we return a non-scalar value.
 	 */
-	if (JB_ROOT_COUNT(jb1) == 0)
+	if (JB_ROOT_COUNT(jb1) == 0 && !JB_ROOT_IS_SCALAR(jb2))
 		PG_RETURN_JSONB(jb2);
-	else if (JB_ROOT_COUNT(jb2) == 0)
+	else if (JB_ROOT_COUNT(jb2) == 0 && !JB_ROOT_IS_SCALAR(jb1))
 		PG_RETURN_JSONB(jb1);
 
 	it1 = JsonbIteratorInit(&jb1->root);
